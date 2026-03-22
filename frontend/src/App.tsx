@@ -3,32 +3,13 @@ import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
 import VoiceChat from './components/VoiceChat'
 import Sidebar, { ChatSession } from './components/Sidebar'
-import { sendMessage } from './services/api'
+import { sendMessage, fetchSessions, fetchSession, createSession, updateSessionAPI, deleteSessionAPI } from './services/api'
 import { Message } from './types'
 import { translations, Lang } from './i18n/translations'
 import './styles/App.css'
 
-const STORAGE_KEY = 'jarvis-sessions'
-
-const loadSessions = (): { sessions: ChatSession[], chats: Record<string, Message[]> } => {
-    try {
-        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
-        const sessions = (data.sessions || []).map((s: ChatSession) => ({ ...s, timestamp: new Date(s.timestamp) }))
-        const chats: Record<string, Message[]> = {}
-        for (const key in data.chats) {
-            chats[key] = data.chats[key].map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) }))
-        }
-        return { sessions, chats }
-    } catch { return { sessions: [], chats: {} } }
-}
-
-const saveSessions = (sessions: ChatSession[], chats: Record<string, Message[]>) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sessions, chats }))
-}
-
 const App = () => {
     const [sessions, setSessions] = useState<ChatSession[]>([])
-    const [chats, setChats] = useState<Record<string, Message[]>>({})
     const [activeId, setActiveId] = useState<string | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -40,24 +21,17 @@ const App = () => {
     const t = translations[lang]
 
     useEffect(() => {
-        const data = loadSessions()
-        setSessions(data.sessions)
-        setChats(data.chats)
+        fetchSessions().then(data => {
+            setSessions(data.map((s: any) => ({
+                id: s._id,
+                title: s.title,
+                timestamp: new Date(s.updatedAt),
+                preview: s.preview
+            })))
+        }).catch(() => {})
     }, [])
 
     useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
-
-    useEffect(() => {
-        if (activeId && messages.length > 0) {
-            const newChats = { ...chats, [activeId]: messages }
-            setChats(newChats)
-            const newSessions = sessions.map(s =>
-                s.id === activeId ? { ...s, preview: messages[messages.length - 1].content.substring(0, 60) } : s
-            )
-            setSessions(newSessions)
-            saveSessions(newSessions, newChats)
-        }
-    }, [messages])
 
     const speakText = (text: string) => {
         if (!('speechSynthesis' in window)) return
@@ -73,65 +47,61 @@ const App = () => {
     const stopSpeak = () => { window.speechSynthesis?.cancel(); setIsSpeaking(false) }
 
     const send = async (content: string) => {
-        let currentId = activeId
-        if (!currentId) {
-            currentId = Date.now().toString()
-            const newSession: ChatSession = {
-                id: currentId,
-                title: content.substring(0, 40),
-                timestamp: new Date(),
-                preview: content.substring(0, 60)
-            }
-            setSessions(prev => [newSession, ...prev])
-            setActiveId(currentId)
-        }
-
         const userMsg: Message = { id: Date.now().toString(), role: 'user', content, timestamp: new Date() }
-        setMessages(prev => [...prev, userMsg]); setIsLoading(true)
+        const updatedMessages = [...messages, userMsg]
+        setMessages(updatedMessages); setIsLoading(true)
+
         try {
             const d = await sendMessage(content)
-            setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'assistant', content: d.reply, timestamp: new Date() }])
+            const botMsg: Message = { id: (Date.now()+1).toString(), role: 'assistant', content: d.reply, timestamp: new Date() }
+            const allMessages = [...updatedMessages, botMsg]
+            setMessages(allMessages)
+
+            if (!activeId) {
+                const session = await createSession(content.substring(0, 40), allMessages)
+                const newSession: ChatSession = {
+                    id: session._id,
+                    title: session.title,
+                    timestamp: new Date(session.updatedAt),
+                    preview: session.preview
+                }
+                setSessions(prev => [newSession, ...prev])
+                setActiveId(session._id)
+            } else {
+                await updateSessionAPI(activeId, allMessages)
+                setSessions(prev => prev.map(s =>
+                    s.id === activeId ? { ...s, preview: d.reply.substring(0, 60), timestamp: new Date() } : s
+                ))
+            }
         } catch {
             setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'assistant', content: t.serverError, timestamp: new Date() }])
         } finally { setIsLoading(false) }
     }
 
-    const newChat = () => {
-        setActiveId(null)
-        setMessages([])
-        setShowSidebar(false)
+    const newChat = () => { setActiveId(null); setMessages([]); setShowSidebar(false) }
+
+    const selectChat = async (id: string) => {
+        try {
+            const data = await fetchSession(id)
+            setActiveId(id)
+            setMessages(data.messages.map((m: any) => ({ ...m, id: m._id || Date.now().toString(), timestamp: new Date(m.timestamp) })))
+            setShowSidebar(false)
+        } catch { console.log('Failed to load chat') }
     }
 
-    const selectChat = (id: string) => {
-        setActiveId(id)
-        setMessages(chats[id] || [])
-        setShowSidebar(false)
-    }
-
-    const deleteChat = (id: string) => {
-        const newSessions = sessions.filter(s => s.id !== id)
-        const newChats = { ...chats }
-        delete newChats[id]
-        setSessions(newSessions)
-        setChats(newChats)
-        saveSessions(newSessions, newChats)
-        if (activeId === id) { setActiveId(null); setMessages([]) }
+    const deleteChat = async (id: string) => {
+        try {
+            await deleteSessionAPI(id)
+            setSessions(prev => prev.filter(s => s.id !== id))
+            if (activeId === id) { setActiveId(null); setMessages([]) }
+        } catch { console.log('Failed to delete') }
     }
 
     const back = () => { stopSpeak(); newChat() }
 
     return (
         <div className="app">
-            <Sidebar
-                sessions={sessions}
-                activeId={activeId}
-                onSelect={selectChat}
-                onNew={newChat}
-                onDelete={deleteChat}
-                isOpen={showSidebar}
-                onToggle={() => setShowSidebar(false)}
-                t={t}
-            />
+            <Sidebar sessions={sessions} activeId={activeId} onSelect={selectChat} onNew={newChat} onDelete={deleteChat} isOpen={showSidebar} onToggle={() => setShowSidebar(false)} t={t}/>
 
             <header className="app-header">
                 <div className="header-left">
@@ -149,18 +119,12 @@ const App = () => {
                     </div>
                 </div>
                 <div className="header-right">
-                    <button className="lang-btn" onClick={() => setLang(lang === 'ka' ? 'en' : 'ka')}>
-                        {lang === 'ka' ? 'EN' : 'KA'}
-                    </button>
+                    <button className="lang-btn" onClick={() => setLang(lang === 'ka' ? 'en' : 'ka')}>{lang === 'ka' ? 'EN' : 'KA'}</button>
                     <button className="voice-toggle" onClick={() => setShowVoice(true)}>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                         <span>{t.dialogue}</span>
                     </button>
-                    {isSpeaking && (
-                        <button className="stop-btn" onClick={stopSpeak}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>
-                        </button>
-                    )}
+                    {isSpeaking && <button className="stop-btn" onClick={stopSpeak}><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg></button>}
                     <div className={`status-pill ${isLoading ? 'thinking' : isSpeaking ? 'speaking' : ''}`}>
                         <span className="dot"/><span className="label">{isLoading ? t.thinking : isSpeaking ? t.speaking : t.online}</span>
                     </div>
@@ -174,22 +138,10 @@ const App = () => {
                         <h2>{t.welcome}</h2>
                         <p>{t.welcomeText}</p>
                         <div className="suggestions">
-                            <button className="sug-card" onClick={() => send(t.sug1)}>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                                <span>{t.sug1}</span>
-                            </button>
-                            <button className="sug-card" onClick={() => send(t.sug2)}>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-                                <span>{t.sug2}</span>
-                            </button>
-                            <button className="sug-card" onClick={() => send(t.sug3)}>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-                                <span>{t.sug3}</span>
-                            </button>
-                            <button className="sug-card" onClick={() => send(t.sug4)}>
-                                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-                                <span>{t.sug4}</span>
-                            </button>
+                            <button className="sug-card" onClick={() => send(t.sug1)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg><span>{t.sug1}</span></button>
+                            <button className="sug-card" onClick={() => send(t.sug2)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg><span>{t.sug2}</span></button>
+                            <button className="sug-card" onClick={() => send(t.sug3)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><span>{t.sug3}</span></button>
+                            <button className="sug-card" onClick={() => send(t.sug4)}><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg><span>{t.sug4}</span></button>
                         </div>
                         <button className="welcome-voice" onClick={() => setShowVoice(true)}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/></svg>
