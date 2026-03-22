@@ -4,6 +4,15 @@ Personal AI assistant built by Luka Guledani. Inspired by Tony Stark's JARVIS fr
 
 This is not a generic chatbot — JARVIS is personalized for its creator and designed to assist with learning, coding, and everyday tasks.
 
+## Screenshots
+
+![JARVIS Chat](./screenshots/chat.png)
+
+| Welcome Screen | Chat | Voice Dialogue |
+|---|---|---|
+| ![Welcome](./screenshots/welcome.png) | ![Chat](./screenshots/chat.png) | ![Voice](./screenshots/voice.png) |
+
+
 ## What JARVIS Can Do
 
 **Programming Help**
