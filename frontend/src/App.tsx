@@ -2,21 +2,62 @@ import { useState, useRef, useEffect } from 'react'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
 import VoiceChat from './components/VoiceChat'
+import Sidebar, { ChatSession } from './components/Sidebar'
 import { sendMessage } from './services/api'
 import { Message } from './types'
 import { translations, Lang } from './i18n/translations'
 import './styles/App.css'
 
+const STORAGE_KEY = 'jarvis-sessions'
+
+const loadSessions = (): { sessions: ChatSession[], chats: Record<string, Message[]> } => {
+    try {
+        const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}')
+        const sessions = (data.sessions || []).map((s: ChatSession) => ({ ...s, timestamp: new Date(s.timestamp) }))
+        const chats: Record<string, Message[]> = {}
+        for (const key in data.chats) {
+            chats[key] = data.chats[key].map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) }))
+        }
+        return { sessions, chats }
+    } catch { return { sessions: [], chats: {} } }
+}
+
+const saveSessions = (sessions: ChatSession[], chats: Record<string, Message[]>) => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ sessions, chats }))
+}
+
 const App = () => {
+    const [sessions, setSessions] = useState<ChatSession[]>([])
+    const [chats, setChats] = useState<Record<string, Message[]>>({})
+    const [activeId, setActiveId] = useState<string | null>(null)
     const [messages, setMessages] = useState<Message[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [isSpeaking, setIsSpeaking] = useState(false)
     const [showVoice, setShowVoice] = useState(false)
+    const [showSidebar, setShowSidebar] = useState(false)
     const [lang, setLang] = useState<Lang>('ka')
     const endRef = useRef<HTMLDivElement>(null)
     const t = translations[lang]
 
+    useEffect(() => {
+        const data = loadSessions()
+        setSessions(data.sessions)
+        setChats(data.chats)
+    }, [])
+
     useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+
+    useEffect(() => {
+        if (activeId && messages.length > 0) {
+            const newChats = { ...chats, [activeId]: messages }
+            setChats(newChats)
+            const newSessions = sessions.map(s =>
+                s.id === activeId ? { ...s, preview: messages[messages.length - 1].content.substring(0, 60) } : s
+            )
+            setSessions(newSessions)
+            saveSessions(newSessions, newChats)
+        }
+    }, [messages])
 
     const speakText = (text: string) => {
         if (!('speechSynthesis' in window)) return
@@ -32,22 +73,71 @@ const App = () => {
     const stopSpeak = () => { window.speechSynthesis?.cancel(); setIsSpeaking(false) }
 
     const send = async (content: string) => {
+        let currentId = activeId
+        if (!currentId) {
+            currentId = Date.now().toString()
+            const newSession: ChatSession = {
+                id: currentId,
+                title: content.substring(0, 40),
+                timestamp: new Date(),
+                preview: content.substring(0, 60)
+            }
+            setSessions(prev => [newSession, ...prev])
+            setActiveId(currentId)
+        }
+
         const userMsg: Message = { id: Date.now().toString(), role: 'user', content, timestamp: new Date() }
-        setMessages(p => [...p, userMsg]); setIsLoading(true)
+        setMessages(prev => [...prev, userMsg]); setIsLoading(true)
         try {
             const d = await sendMessage(content)
-            setMessages(p => [...p, { id: (Date.now()+1).toString(), role: 'assistant', content: d.reply, timestamp: new Date() }])
+            setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'assistant', content: d.reply, timestamp: new Date() }])
         } catch {
-            setMessages(p => [...p, { id: (Date.now()+1).toString(), role: 'assistant', content: t.serverError, timestamp: new Date() }])
+            setMessages(prev => [...prev, { id: (Date.now()+1).toString(), role: 'assistant', content: t.serverError, timestamp: new Date() }])
         } finally { setIsLoading(false) }
     }
 
-    const back = () => { stopSpeak(); setMessages([]) }
+    const newChat = () => {
+        setActiveId(null)
+        setMessages([])
+        setShowSidebar(false)
+    }
+
+    const selectChat = (id: string) => {
+        setActiveId(id)
+        setMessages(chats[id] || [])
+        setShowSidebar(false)
+    }
+
+    const deleteChat = (id: string) => {
+        const newSessions = sessions.filter(s => s.id !== id)
+        const newChats = { ...chats }
+        delete newChats[id]
+        setSessions(newSessions)
+        setChats(newChats)
+        saveSessions(newSessions, newChats)
+        if (activeId === id) { setActiveId(null); setMessages([]) }
+    }
+
+    const back = () => { stopSpeak(); newChat() }
 
     return (
         <div className="app">
+            <Sidebar
+                sessions={sessions}
+                activeId={activeId}
+                onSelect={selectChat}
+                onNew={newChat}
+                onDelete={deleteChat}
+                isOpen={showSidebar}
+                onToggle={() => setShowSidebar(false)}
+                t={t}
+            />
+
             <header className="app-header">
                 <div className="header-left">
+                    <button className="menu-btn" onClick={() => setShowSidebar(!showSidebar)}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                    </button>
                     {messages.length > 0 && (
                         <button className="back-btn" onClick={back}>
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5"/><path d="M12 19L5 12L12 5"/></svg>

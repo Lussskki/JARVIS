@@ -199,3 +199,11 @@
 @media (display-mode: standalone) {
     .logo-mark { display: none; }
 }
+
+.menu-btn {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-bright); background: transparent;
+    color: var(--accent); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+}
+.menu-btn:hover { background: var(--accent-dim); box-shadow: var(--shadow-glow); }
