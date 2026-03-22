@@ -1,6 +1,6 @@
 # J.A.R.V.I.S. — Personal AI Assistant
 
-Personal AI assistant built by Luka Guledani. Inspired by Tony Stark's JARVIS from Iron Man. Built with TypeScript, Express, and React. Powered by Gemini API.
+Personal AI assistant. Inspired by Tony Stark's JARVIS from Iron Man. Built with TypeScript, Express, and React. Powered by Gemini API.
 
 This is not a generic chatbot — JARVIS is personalized for its creator and designed to assist with learning, coding, and everyday tasks.
 
