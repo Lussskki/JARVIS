@@ -1,0 +1,201 @@
+.app { display: flex; flex-direction: column; height: 100dvh; max-width: 900px; margin: 0 auto; position: relative; }
+
+/* Scan line overlay */
+.app::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(6, 182, 212, 0.015) 2px, rgba(6, 182, 212, 0.015) 4px);
+}
+
+/* ── Header ── */
+.app-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 20px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(6, 182, 212, 0.04) 0%, transparent 100%);
+    flex-shrink: 0; position: relative;
+}
+.app-header::after {
+    content: ''; position: absolute; bottom: 0; left: 20px; right: 20px; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent-line), var(--accent), var(--accent-line), transparent);
+}
+
+.header-left { display: flex; align-items: center; gap: 12px; }
+
+.back-btn {
+    width: 32px; height: 32px; border-radius: var(--radius-sm);
+    border: 1px solid var(--border-bright); background: transparent;
+    color: var(--accent); cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all .2s;
+}
+.back-btn:hover { background: var(--accent-dim); box-shadow: var(--shadow-glow); }
+
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-mark {
+    width: 38px; height: 38px; position: relative;
+    border: 1px solid var(--accent); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent-bright); font-weight: 700; font-size: 14px;
+    font-family: var(--font-display); letter-spacing: 0.05em;
+    box-shadow: var(--shadow-glow), inset 0 0 15px rgba(6, 182, 212, 0.1);
+    animation: arcPulse 3s ease-in-out infinite;
+}
+@keyframes arcPulse {
+    0%, 100% { box-shadow: var(--shadow-glow), inset 0 0 15px rgba(6, 182, 212, 0.1); }
+    50% { box-shadow: var(--shadow-glow-strong), inset 0 0 20px rgba(6, 182, 212, 0.15); }
+}
+.logo-label h1 {
+    font-family: var(--font-display); font-size: 14px; font-weight: 600;
+    letter-spacing: 0.2em; color: var(--accent-bright); text-transform: uppercase;
+}
+.logo-label span {
+    font-family: var(--font-mono); font-size: 10px; color: var(--text-muted);
+    letter-spacing: 0.1em; text-transform: uppercase;
+}
+
+.header-right { display: flex; align-items: center; gap: 8px; }
+
+.lang-btn {
+    padding: 4px 10px; background: transparent;
+    border: 1px solid var(--border-bright); border-radius: var(--radius-sm);
+    color: var(--accent); font-family: var(--font-mono); font-size: 11px;
+    font-weight: 600; cursor: pointer; transition: all .2s; letter-spacing: 0.1em;
+}
+.lang-btn:hover { background: var(--accent-dim); box-shadow: var(--shadow-glow); }
+
+.voice-toggle {
+    display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+    background: var(--accent-dim); border: 1px solid var(--border-bright);
+    border-radius: var(--radius-sm); color: var(--accent);
+    font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.05em;
+    cursor: pointer; transition: all .2s; text-transform: uppercase;
+}
+.voice-toggle:hover { background: rgba(6, 182, 212, 0.15); box-shadow: var(--shadow-glow); }
+
+.stop-btn {
+    width: 30px; height: 30px; border-radius: var(--radius-sm);
+    border: 1px solid var(--error); background: var(--error-dim);
+    color: var(--error); cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+}
+
+.status-pill {
+    display: flex; align-items: center; gap: 6px; padding: 4px 10px;
+    background: transparent; border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+.status-pill .dot {
+    width: 6px; height: 6px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+}
+.status-pill.thinking .dot { background: var(--warning); box-shadow: 0 0 8px rgba(245, 158, 11, 0.4); animation: blink 1s infinite; }
+.status-pill.speaking .dot { animation: blink .6s infinite; }
+.status-pill .label {
+    font-size: 10px; color: var(--text-muted); font-family: var(--font-mono);
+    text-transform: uppercase; letter-spacing: 0.1em;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+/* ── Chat Area ── */
+.chat-area { flex: 1; overflow-y: auto; padding: 20px; }
+
+/* ── Welcome ── */
+.welcome {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 100%; text-align: center; gap: 16px; animation: bootUp .8s ease;
+}
+@keyframes bootUp {
+    0% { opacity: 0; transform: scale(0.95); }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; transform: scale(1); }
+}
+
+.welcome-mark {
+    width: 90px; height: 90px; position: relative;
+    border: 2px solid var(--accent); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 28px; font-weight: 800;
+    color: var(--accent-bright); letter-spacing: 0.05em;
+    box-shadow: var(--shadow-glow-strong), inset 0 0 30px rgba(6, 182, 212, 0.1);
+    animation: arcPulse 3s ease-in-out infinite;
+}
+.welcome-mark::before {
+    content: ''; position: absolute; inset: -8px;
+    border: 1px solid var(--accent-line); border-radius: 50%;
+    animation: spin 20s linear infinite;
+    border-top-color: var(--accent);
+}
+.welcome-mark::after {
+    content: ''; position: absolute; inset: -16px;
+    border: 1px solid rgba(6, 182, 212, 0.06); border-radius: 50%;
+    animation: spin 30s linear infinite reverse;
+    border-bottom-color: var(--accent-line);
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.welcome h2 {
+    font-family: var(--font-display); font-size: 20px; font-weight: 600;
+    letter-spacing: 0.15em; color: var(--accent-bright); text-transform: uppercase;
+}
+.welcome p { font-size: 14px; color: var(--text-secondary); max-width: 360px; font-family: var(--font-body); }
+
+.suggestions {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: 8px; margin-top: 20px; max-width: 500px; width: 100%;
+}
+.sug-card {
+    display: flex; align-items: center; gap: 10px; padding: 12px 14px;
+    background: var(--accent-dim); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); color: var(--text-primary);
+    font-family: var(--font-body); font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all .2s; text-align: left;
+    position: relative; overflow: hidden;
+}
+.sug-card::before {
+    content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
+    background: var(--accent); opacity: 0; transition: opacity .2s;
+}
+.sug-card:hover { border-color: var(--accent); background: rgba(6, 182, 212, 0.06); }
+.sug-card:hover::before { opacity: 1; }
+.sug-card svg { flex-shrink: 0; color: var(--accent); }
+
+.welcome-voice {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 20px; padding: 12px 28px;
+    background: transparent; border: 1px solid var(--accent);
+    border-radius: var(--radius-sm); color: var(--accent-bright);
+    font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.1em;
+    text-transform: uppercase; cursor: pointer; transition: all .3s;
+}
+.welcome-voice:hover {
+    background: var(--accent-dim); box-shadow: var(--shadow-glow-strong);
+    transform: translateY(-1px);
+}
+
+/* ── Messages ── */
+.messages { display: flex; flex-direction: column; gap: 4px; }
+.typing-row {
+    display: flex; gap: 10px; padding: 14px 12px;
+    background: var(--accent-dim); border: 1px solid var(--border);
+    border-left: 2px solid var(--accent);
+    border-radius: var(--radius-sm); animation: up .25s ease;
+}
+.thinking-text {
+    font-size: 12px; color: var(--accent); padding: 4px 0;
+    font-family: var(--font-mono); letter-spacing: 0.1em; text-transform: uppercase;
+    animation: thinkPulse 1.5s infinite;
+}
+@keyframes thinkPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes up { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+/* ── Mobile ── */
+@media (max-width: 640px) {
+    .app-header { padding: 10px 14px; }
+    .chat-area { padding: 14px; }
+    .suggestions { grid-template-columns: 1fr; }
+    .welcome h2 { font-size: 16px; }
+    .welcome-mark { width: 70px; height: 70px; font-size: 22px; }
+    .voice-toggle span { display: none; }
+    .status-pill .label { display: none; }
+}
+@media (display-mode: standalone) {
+    .logo-mark { display: none; }
+}
