@@ -2,8 +2,8 @@ export const translations = {
     ka: {
         title: 'JARVIS',
         subtitle: 'პირადი AI ასისტენტი',
-        welcome: 'გამარჯობა, ლუკა!',
-        welcomeText: 'მე ვარ JARVIS — შენი პირადი AI ასისტენტი.',
+        welcome: 'გამარჯობა!',
+        welcomeText: 'მე ვარ JARVIS — ლუკას პირადი AI ასისტენტი.',
         dialogue: 'საუბარი',
         online: 'ონლაინ',
         thinking: 'ფიქრობს',
