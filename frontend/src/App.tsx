@@ -3,7 +3,7 @@ import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
 import VoiceChat from './components/VoiceChat'
 import Sidebar, { ChatSession } from './components/Sidebar'
-import { sendMessage, fetchSessions, fetchSession, createSession, updateSessionAPI, deleteSessionAPI } from './services/api'
+import { sendMessage, fetchSessions, fetchSession, createSession, updateSessionAPI, deleteSessionAPI, trackVisit } from './services/api'
 import { Message } from './types'
 import { translations, Lang } from './i18n/translations'
 import './styles/App.css'
@@ -19,6 +19,8 @@ const App = () => {
     const [lang, setLang] = useState<Lang>('ka')
     const endRef = useRef<HTMLDivElement>(null)
     const t = translations[lang]
+
+    useEffect(() => { trackVisit() }, [])
 
     useEffect(() => {
         fetchSessions().then(data => {

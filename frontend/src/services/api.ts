@@ -49,3 +49,22 @@ export const deleteSessionAPI = async (id: string) => {
     if (!res.ok) throw new Error('Failed')
     return res.json()
 }
+
+export const trackVisit = async () => {
+    try {
+        await fetch(`${API_URL}/track`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                page: window.location.pathname,
+                referrer: document.referrer || 'direct'
+            })
+        })
+    } catch {}
+}
+
+export const fetchStats = async (days: number = 30) => {
+    const res = await fetch(`${API_URL}/admin/stats?days=${days}`)
+    if (!res.ok) throw new Error('Failed')
+    return res.json()
+}
