@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url'
 import { connectDB } from './database/connect.js'
 import chatRouter from './routes/chatRoute.js'
 import sessionRouter from './routes/sessionRoute.js'
+import visitorRouter from './routes/visitorRoute.js'
 
 dotenv.config()
 const app = express()
@@ -19,6 +20,7 @@ app.use(cors())
 app.use(express.json())
 app.use('/api', chatRouter)
 app.use('/api', sessionRouter)
+app.use('/api', visitorRouter)
 
 app.use(express.static(path.join(__dirname, '../frontend/dist')))
 
